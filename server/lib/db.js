@@ -14,7 +14,8 @@ async function connectToDatabase() {
   }
 
   cachedConnection = await mongoose.connect(connectionString, {
-    dbName: process.env.MONGODB_DB_NAME || "bulk-mail-app"
+    dbName: process.env.MONGODB_DB_NAME || "bulk-mail-app",
+    serverSelectionTimeoutMS: 5000
   });
 
   return cachedConnection;

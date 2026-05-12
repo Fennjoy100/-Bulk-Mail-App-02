@@ -3,6 +3,38 @@ import * as XLSX from "xlsx";
 
 const emailPattern = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 
+async function parseApiResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  const rawBody = await response.text();
+
+  if (!rawBody) {
+    return {
+      data: null,
+      message: response.ok ? "" : "Empty response from server."
+    };
+  }
+
+  if (contentType.includes("application/json")) {
+    try {
+      const data = JSON.parse(rawBody);
+      return {
+        data,
+        message: data?.message || ""
+      };
+    } catch (_error) {
+      return {
+        data: null,
+        message: "Server returned invalid JSON."
+      };
+    }
+  }
+
+  return {
+    data: null,
+    message: rawBody
+  };
+}
+
 function extractEmailsFromText(value) {
   const matches = String(value || "").match(emailPattern) || [];
   return Array.from(new Set(matches.map((email) => email.toLowerCase())));
@@ -79,13 +111,13 @@ export default function App() {
 
     try {
       const response = await fetch("/api/history");
-      const data = await response.json();
+      const { data, message } = await parseApiResponse(response);
 
       if (!response.ok) {
-        throw new Error(data.message || "Could not load history.");
+        throw new Error(message || "Could not load history.");
       }
 
-      setHistory(data.history || []);
+      setHistory(data?.history || []);
     } catch (error) {
       setStatus({
         type: "error",
@@ -166,14 +198,14 @@ export default function App() {
         })
       });
 
-      const data = await response.json();
+      const { data, message } = await parseApiResponse(response);
 
       if (!response.ok) {
-        const invalids = data.invalidRecipients?.length
+        const invalids = data?.invalidRecipients?.length
           ? ` Invalid: ${data.invalidRecipients.join(", ")}`
           : "";
 
-        throw new Error((data.message || "Sending failed.") + invalids);
+        throw new Error((message || "Sending failed.") + invalids);
       }
 
       setStatus({
