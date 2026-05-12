@@ -1,11 +1,11 @@
 # BulkMail Studio
 
-BulkMail Studio is a full stack bulk email app built with React, Express, MongoDB, and Gmail SMTP through Nodemailer. It supports:
+BulkMail Studio is a full stack bulk email app built with React, Express, MongoDB, and Resend. It supports:
 
 - Writing a subject and email body
 - Adding recipients manually
 - Uploading Excel or CSV files containing email addresses
-- Sending real Gmail messages
+- Sending real bulk emails through Resend
 - Saving send history in MongoDB
 - Deploying the frontend and API together on Vercel
 
@@ -14,7 +14,7 @@ BulkMail Studio is a full stack bulk email app built with React, Express, MongoD
 - Frontend: React + Vite
 - Backend: Node.js + Express
 - Database: MongoDB + Mongoose
-- Mail delivery: Nodemailer with Gmail App Password
+- Mail delivery: Resend email API
 - Spreadsheet parsing: `xlsx`
 
 ## Local Setup
@@ -31,9 +31,11 @@ BulkMail Studio is a full stack bulk email app built with React, Express, MongoD
 
    - `MONGODB_URI`: your MongoDB connection string
    - `MONGODB_DB_NAME`: optional database name
-   - `GMAIL_USER`: the Gmail address that will send emails
-   - `GMAIL_APP_PASSWORD`: Gmail app password, not your normal Gmail password
+   - `RESEND_API_KEY`: your Resend API key
+   - `RESEND_FROM_EMAIL`: sender email, such as `onboarding@resend.dev` for testing or a verified domain email for production
+   - `REPLY_TO_EMAIL`: optional reply-to email address
    - `EMAIL_FROM_NAME`: sender display name
+   - `EMAIL_BATCH_SIZE`: optional, defaults to `50`
 
 4. Start the app:
 
@@ -43,15 +45,16 @@ BulkMail Studio is a full stack bulk email app built with React, Express, MongoD
 
 5. Open the frontend at `http://localhost:5173`
 
-## Gmail Setup
+## Resend Setup
 
-To send real Gmail messages:
+To send real emails:
 
-1. Turn on 2-Step Verification for your Gmail account.
-2. Create an App Password in your Google account security settings.
-3. Put that app password into `GMAIL_APP_PASSWORD`.
+1. Create a Resend account.
+2. Create an API key in the Resend dashboard.
+3. Add it to `RESEND_API_KEY`.
+4. For production sending, verify your domain in Resend and set `RESEND_FROM_EMAIL` to that sender address.
 
-Do not use your normal Gmail password in this project.
+You can use `onboarding@resend.dev` for initial testing, but verified domains are the correct production setup.
 
 ## Excel / CSV Upload Format
 
@@ -80,9 +83,11 @@ You can also keep adding emails manually in the text area.
 
    - `MONGODB_URI`
    - `MONGODB_DB_NAME`
-   - `GMAIL_USER`
-   - `GMAIL_APP_PASSWORD`
+   - `RESEND_API_KEY`
+   - `RESEND_FROM_EMAIL`
+   - `REPLY_TO_EMAIL`
    - `EMAIL_FROM_NAME`
+   - `EMAIL_BATCH_SIZE`
 
 4. Deploy.
 
@@ -90,6 +95,6 @@ Vercel will build the React frontend and expose the Express API through the `api
 
 ## Important Notes
 
-- Gmail has daily sending limits. Test with a small recipient list first.
-- For large campaigns, dedicated transactional email providers are more reliable than Gmail.
+- Resend is better suited to Vercel serverless functions than Gmail SMTP.
+- Resend supports verified custom domains for production sending.
 - MongoDB must be reachable from Vercel, so allow network access from Vercel in your MongoDB setup.

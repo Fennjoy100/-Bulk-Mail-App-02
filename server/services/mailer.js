@@ -1,5 +1,3 @@
-const nodemailer = require("nodemailer");
-
 function chunkArray(items, size) {
   const chunks = [];
 
@@ -19,31 +17,33 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-function createTransporter() {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASSWORD;
+function getBatchSize() {
+  const parsed = Number(process.env.EMAIL_BATCH_SIZE || 50);
 
-  if (!user || !pass) {
-    throw new Error("GMAIL_USER and GMAIL_APP_PASSWORD are required.");
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 50;
   }
 
-  return nodemailer.createTransport({
-    service: "gmail",
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 20000,
-    auth: {
-      user,
-      pass
-    }
-  });
+  return Math.min(parsed, 50);
+}
+
+async function createResendClient() {
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY is required.");
+  }
+
+  const { Resend } = await import("resend");
+  return new Resend(apiKey);
 }
 
 async function sendBulkEmail({ recipients, subject, body }) {
-  const transporter = createTransporter();
+  const resend = await createResendClient();
   const fromName = process.env.EMAIL_FROM_NAME || "BulkMail Studio";
-  const fromAddress = process.env.GMAIL_USER;
-  const batchSize = Number(process.env.EMAIL_BATCH_SIZE || 25);
+  const fromAddress = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+  const replyTo = process.env.REPLY_TO_EMAIL || undefined;
+  const batchSize = getBatchSize();
   const acceptedRecipients = [];
   const failedRecipients = [];
   const htmlBody = body
@@ -55,14 +55,19 @@ async function sendBulkEmail({ recipients, subject, body }) {
 
   for (const recipientBatch of chunkArray(recipients, batchSize)) {
     try {
-      await transporter.sendMail({
+      const { error } = await resend.emails.send({
         from: `"${fromName}" <${fromAddress}>`,
-        to: fromAddress,
+        to: [fromAddress],
         bcc: recipientBatch,
         subject,
         text: body,
-        html: htmlBody
+        html: htmlBody,
+        replyTo
       });
+
+      if (error) {
+        throw new Error(error.message || "Resend failed to send email.");
+      }
 
       acceptedRecipients.push(...recipientBatch);
     } catch (error) {
